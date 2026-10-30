@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>どっちをえらぶ？けいさんバトル</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@500;700&family=M+PLUS+Rounded+1c:wght@500;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'M PLUS Rounded 1c', 'Kiwi Maru', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            overflow-x: hidden;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
+        }
+        .card-glass {
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(12px);
+        }
+        
+        /* プレイヤーキャラクターのスムーズ移動アニメーション */
+        #player-wrapper {
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            will-change: transform;
+        }
+
+        /* 攻撃スラッシュエフェクト */
+        @keyframes slash-effect {
+            0% { opacity: 0; transform: scale(0.3) rotate(-45deg); }
+            50% { opacity: 1; transform: scale(1.4) rotate(15deg); }
+            100% { opacity: 0; transform: scale(1.8) rotate(45deg); }
+        }
+        .animate-slash {
+            animation: slash-effect 0.3s ease-out forwards;
+        }
+
+        /* ラスボスの反撃エフェクト */
+        @keyframes counter-effect {
+            0% { opacity: 0; transform: scale(0.5); }
+            50% { opacity: 1; transform: scale(1.6); }
+            100% { opacity: 0; transform: scale(2.0); }
+        }
+        .animate-counter {
+            animation: counter-effect 0.4s ease-out forwards;
+        }
+
+        @keyframes float-enemy {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+        .animate-float {
+            animation: float-enemy 2.5s infinite ease-in-out;
+        }
+
+        /* プログレスバー */
+        .timer-bar {
+            transition: width 0.1s linear, background-color 0.3s ease;
+        }
+
+        /* 消失アニメーション */
+        .fade-out-fast {
+            transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+            opacity: 0 !important;
+            transform: scale(0.8) !important;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-slate-800 flex items-center justify-center p-2 md:p-4">
+
+    <div class="w-full max-w-4xl mx-auto card-glass rounded-3xl shadow-2xl border-4 border-indigo-200/60 p-4 md:p-6 relative overflow-hidden min-h-[620px] flex flex-col justify-between">
+
+        <!-- ==================== 1. スタート画面 ==================== -->
+        <div id="screen-start" class="flex flex-col items-center justify-between flex-grow py-2 text-center">
+            <div>
+                <div class="inline-block bg-yellow-400 text-yellow-950 font-black text-xs md:text-sm px-4 py-1 rounded-full mb-2 shadow-sm animate-bounce">
+                    ⚔️ たのしく けいさんバトル！
+                </div>
+                <h1 class="text-3xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 mb-2 drop-shadow">
+                    どっちをえらぶ？<br class="sm:hidden">けいさんバトル
+                </h1>
+                <p class="text-slate-600 text-sm md:text-base font-bold">
+                    レベルを えらんで ゲームを はじめよう！
+                </p>
+            </div>
+
+            <!-- レベル選択ボタン -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 w-full max-w-2xl my-4">
+                <button onclick="startGame(1)" class="bg-gradient-to-r from-emerald-400 to-green-500 hover:from-emerald-500 hover:to-green-600 text-white rounded-2xl p-3 md:p-4 text-left shadow-lg border-b-4 border-green-700 active:scale-95 transition">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-lg md:text-xl font-black bg-white/20 px-3 py-0.5 rounded-lg">れべる 1</span>
+                        <span class="text-xs bg-emerald-800/40 px-2 py-1 rounded-full font-bold">1ねんせい</span>
+                    </div>
+                    <div class="text-xs space-y-0.5 opacity-95">
+                        <p>・しょき こうげきりょく: 10</p>
+                        <p>・＋ と − のみ（1けた）</p>
+                        <p>・じかん: 15びょう</p>
+                    </div>
+                </button>
+
+                <button onclick="startGame(2)" class="bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-500 hover:to-blue-600 text-white rounded-2xl p-3 md:p-4 text-left shadow-lg border-b-4 border-blue-700 active:scale-95 transition">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-lg md:text-xl font-black bg-white/20 px-3 py-0.5 rounded-lg">れべる 2</span>
+                        <span class="text-xs bg-blue-800/40 px-2 py-1 rounded-full font-bold">2ねんせい</span>
+                    </div>
+                    <div class="text-xs space-y-0.5 opacity-95">
+                        <p>・しょき こうげきりょく: 10</p>
+                        <p>・＋ − おおめ、× すこし</p>
+                        <p>・じかん: 12びょう</p>
+                    </div>
+                </button>
+
+                <button onclick="startGame(3)" class="bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white rounded-2xl p-3 md:p-4 text-left shadow-lg border-b-4 border-orange-700 active:scale-95 transition">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-lg md:text-xl font-black bg-white/20 px-3 py-0.5 rounded-lg">レベル 3</span>
+                        <span class="text-xs bg-orange-800/40 px-2 py-1 rounded-full font-bold">3〜4年生</span>
+                    </div>
+                    <div class="text-xs space-y-0.5 opacity-95">
+                        <p>・初期攻撃力: 100</p>
+                        <p>・＋ − × をフル活用！</p>
+                        <p>・制限時間: 9秒</p>
+                    </div>
+                </button>
+
+                <button onclick="startGame(4)" class="bg-gradient-to-r from-rose-500 to-purple-600 hover:from-rose-600 hover:to-purple-700 text-white rounded-2xl p-3 md:p-4 text-left shadow-lg border-b-4 border-purple-800 active:scale-95 transition">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-lg md:text-xl font-black bg-white/20 px-3 py-0.5 rounded-lg">レベル 4</span>
+                        <span class="text-xs bg-purple-900/40 px-2 py-1 rounded-full font-bold">5〜6年生</span>
+                    </div>
+                    <div class="text-xs space-y-0.5 opacity-95">
+                        <p>・初期攻撃力: 1000</p>
+                        <p>・桁数バトル＆ハイスピード</p>
+                        <p>・制限時間: 6秒</p>
+                    </div>
+                </button>
+
+                <button onclick="startGame(5)" class="bg-gradient-to-r from-red-600 via-rose-700 to-zinc-900 hover:from-red-700 hover:to-zinc-950 text-white rounded-2xl p-3 md:p-4 text-left shadow-lg border-b-4 border-red-950 active:scale-95 transition sm:col-span-2">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-lg md:text-xl font-black bg-white/20 px-3 py-0.5 rounded-lg">レベル 5（上級者向け）</span>
+                        <span class="text-xs bg-red-950/60 px-2 py-1 rounded-full font-bold text-yellow-300">🔥 超難関</span>
+                    </div>
+                    <div class="text-xs space-y-0.5 opacity-95">
+                        <p>・初期攻撃力: 10,000</p>
+                        <p>・×0.1 や ×0.5 のトラップが出現！（小数点は四捨五入）</p>
+                        <p>・制限時間: 4秒</p>
+                    </div>
+                </button>
+            </div>
+
+            <div class="text-xs text-slate-500 font-medium">※ 音声が出ます</div>
+        </div>
+
+        <!-- ==================== 2. ゲームプレイ画面 ==================== -->
+        <div id="screen-game" class="hidden flex-col justify-between flex-grow h-full relative">
+            
+            <!-- 上部ヘッダー（敵の見出し & ステージ数） -->
+            <div class="flex items-center justify-between bg-slate-100 rounded-2xl px-4 py-2 border border-slate-300 mb-2">
+                <div class="text-lg md:text-2xl font-black text-indigo-950 flex items-center gap-2">
+                    👾 <span id="header-enemy-title">すてーじ１の てき</span>
+                </div>
+                <div class="bg-indigo-600 text-white font-extrabold text-sm md:text-base px-3 py-1 rounded-xl shadow-sm">
+                    <span id="label-stage">ステージ</span>: <span id="current-stage">1</span>/10
+                </div>
+            </div>
+
+            <!-- タイマーバー -->
+            <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden p-0.5 mb-3 border border-slate-300">
+                <div id="timer-bar" class="h-full bg-emerald-500 rounded-full timer-bar w-full"></div>
+            </div>
+
+            <!-- メインバトルフィールド -->
+            <div class="relative flex-grow flex flex-col justify-between my-2 py-2">
+                
+                <!-- 中段：左右の敵＆選択計算ボックス -->
+                <div class="grid grid-cols-2 gap-4 md:gap-8 items-end relative z-10">
+                    
+                    <!-- 左の敵＆選択肢 -->
+                    <div id="node-left" class="flex flex-col items-center transition-all duration-300">
+                        <!-- 敵イラスト -->
+                        <div id="enemy-left-avatar" class="text-5xl md:text-6xl animate-float mb-1 filter drop-shadow-md select-none">
+                            🤖
+                        </div>
+                        <!-- 計算数値ボックス -->
+                        <button id="btn-left" onclick="handleChoice('left')" class="w-full bg-white border-4 border-indigo-500 hover:border-indigo-600 rounded-2xl p-3 md:p-5 shadow-lg flex flex-col items-center justify-center active:scale-95 transition min-h-[90px] md:min-h-[110px]">
+                            <span id="btn-left-text" class="text-2xl md:text-4xl font-black text-slate-800 tracking-wide">- 2</span>
+                        </button>
+                    </div>
+
+                    <!-- 右の敵＆選択肢 -->
+                    <div id="node-right" class="flex flex-col items-center transition-all duration-300">
+                        <!-- 敵イラスト -->
+                        <div id="enemy-right-avatar" class="text-5xl md:text-6xl animate-float mb-1 filter drop-shadow-md select-none">
+                            👻
+                        </div>
+                        <!-- 計算数値ボックス -->
+                        <button id="btn-right" onclick="handleChoice('right')" class="w-full bg-white border-4 border-indigo-500 hover:border-indigo-600 rounded-2xl p-3 md:p-5 shadow-lg flex flex-col items-center justify-center active:scale-95 transition min-h-[90px] md:min-h-[110px]">
+                            <span id="btn-right-text" class="text-2xl md:text-4xl font-black text-slate-800 tracking-wide">+ 11</span>
+                        </button>
+                    </div>
+
+                </div>
+
+                <!-- 攻撃エフェクト用オーバーレイ -->
+                <div id="slash-effect" class="hidden absolute pointer-events-none z-30 text-6xl md:text-8xl">
+                    ⚔️
+                </div>
+
+                <!-- 敵からの反撃エフェクト用オーバーレイ -->
+                <div id="counter-effect" class="hidden absolute pointer-events-none z-30 text-6xl md:text-8xl">
+                    💥⚡
+                </div>
+
+                <!-- 下部中央：プレイヤーキャラクター＆攻撃力ボックス -->
+                <div class="flex justify-center mt-6 relative z-20">
+                    <div id="player-wrapper" class="flex flex-col items-center w-full max-w-xs transition-opacity duration-300">
+                        <!-- 自分のキャラクター（剣持ち） -->
+                        <div id="player-avatar" class="text-5xl md:text-6xl filter drop-shadow-lg select-none mb-1">
+                            🙂⚔️
+                        </div>
+                        <!-- 攻撃力表示ボックス -->
+                        <div class="w-full bg-indigo-900 border-4 border-yellow-400 rounded-2xl p-2 md:p-3 shadow-xl text-center text-white">
+                            <div id="label-power" class="text-xs md:text-sm font-bold text-yellow-300">こうげきりょく</div>
+                            <div id="display-power" class="text-2xl md:text-4xl font-black text-white tracking-tight">10</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ==================== 3. 結果画面 ==================== -->
+        <div id="screen-result" class="hidden flex-col items-center justify-between flex-grow py-4 text-center">
+            
+            <div class="space-y-1">
+                <div id="result-badge" class="inline-block px-4 py-1 rounded-full text-white font-extrabold text-sm md:text-base shadow">
+                    GAME CLEAR!
+                </div>
+                <h2 id="result-title" class="text-2xl md:text-4xl font-black text-slate-800">
+                    ゲーム しゅうりょう！
+                </h2>
+                <p id="result-detail" class="text-sm md:text-base text-slate-600 font-bold">
+                    ラスボスを たおした！
+                </p>
+            </div>
+
+            <!-- 最終攻撃力表示 -->
+            <div class="w-full max-w-lg bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 p-4 md:p-5 rounded-3xl border-4 border-amber-300 shadow-xl my-2 space-y-3">
+                <div>
+                    <div id="label-final-power" class="text-xs md:text-sm font-bold text-amber-800 mb-1">さいごの こうげきりょく</div>
+                    <div id="final-power-number" class="text-3xl md:text-5xl font-black text-amber-600 tracking-tight">
+                        123,456,789
+                    </div>
+                </div>
+                <hr class="border-amber-200 border-dashed">
+                <div>
+                    <div id="label-kanji-power" class="text-xs font-bold text-amber-700 mb-0.5">かんじ まじり ひょうき</div>
+                    <div id="final-power-kanji" class="text-lg md:text-2xl font-black text-slate-800">
+                        1億2345万6789
+                    </div>
+                </div>
+            </div>
+
+            <!-- ボタン群 -->
+            <div class="w-full max-w-md space-y-3">
+                <!-- タイトルに戻るボタン -->
+                <button onclick="returnToTitle()" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-black text-lg md:text-xl py-3.5 rounded-2xl shadow-xl border-b-4 border-indigo-950 active:scale-95 transition">
+                    🏠 <span id="btn-return-text">タイトルに もどる</span>
+                </button>
+
+                <!-- 戦いの記録 ボタン -->
+                <button onclick="openHistoryModal()" class="w-full bg-white hover:bg-slate-50 text-indigo-700 border-2 border-indigo-400 font-black text-base md:text-lg py-2.5 rounded-2xl shadow-md active:scale-95 transition flex items-center justify-center gap-2">
+                    📜 <span id="btn-history-text">たたかいの きろく</span>
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 戦いの記録 モーダルダイアログ -->
+    <div id="modal-history" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 items-center justify-center p-3">
+        <div class="bg-white rounded-3xl max-w-xl w-full p-4 md:p-6 max-h-[85vh] flex flex-col justify-between shadow-2xl border-4 border-indigo-300">
+            <div>
+                <div class="flex justify-between items-center pb-3 mb-3 border-b border-slate-200">
+                    <h3 id="modal-title" class="text-xl md:text-2xl font-black text-indigo-900 flex items-center gap-2">
+                        📜 たたかいの きろく
+                    </h3>
+                    <button onclick="closeHistoryModal()" class="text-slate-400 hover:text-slate-700 font-black text-2xl px-2">✕</button>
+                </div>
+                <div id="modal-history-content" class="overflow-y-auto max-h-[55vh] space-y-2 pr-1 text-sm font-bold text-slate-700">
+                    <!-- JSで履歴行を動的生成 -->
+                </div>
+            </div>
+            <button onclick="closeHistoryModal()" class="mt-4 w-full bg-slate-800 text-white py-3 rounded-xl font-extrabold hover:bg-slate-900 transition">
+                とじる
+            </button>
+        </div>
+    </div>
+
+    <script>
+        /* ==================== 1. Web Audio API サウンド効果 ==================== */
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new AudioCtx();
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                const now = audioCtx.currentTime;
+
+                if (type === 'click') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(450, now);
+                    osc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                    osc.start(now);
+                    osc.stop(now + 0.08);
+                } else if (type === 'attack') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.linearRampToValueAtTime(700, now + 0.15);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                } else if (type === 'win') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, now);
+                    osc.frequency.setValueAtTime(659.25, now + 0.1);
+                    osc.frequency.setValueAtTime(783.99, now + 0.2);
+                    osc.frequency.setValueAtTime(1046.50, now + 0.3);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                    osc.start(now);
+                    osc.stop(now + 0.5);
+                } else if (type === 'lose') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(280, now);
+                    osc.frequency.linearRampToValueAtTime(110, now + 0.3);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                }
+            } catch (e) {}
+        }
+
+        /* ==================== 2. ゲーム状態 ==================== */
+        let level = 1;
+        let currentStage = 1;
+        let currentPower = 10;
+        let optimalPower = 10;
+        let choiceHistory = []; // 戦いの記録保存用
+        let timerInterval = null;
+        let timeLeft = 0;
+        let maxTime = 15;
+        let isBossBattle = false;
+        let isFinalBoss = false;
+        let isAnimating = false;
+
+        let currentChoices = { left: null, right: null };
+        let currentBosses = { bossA: null, bossB: null };
+
+        // 状態保持（レベル2における掛け算出現カウンタ & 直前問題が「両方ー」だったかのフラグ）
+        let level2MultiplyCount = 0;
+        let lastQuestionWasBothMinus = false;
+
+        /* ==================== 3. 漢字表記変換ユーティリティ ==================== */
+        function formatKanjiPower(num) {
+            if (num === 0) return "0";
+            const UNITS = ['', '万', '億', '兆'];
+            let result = '';
+            let unitIdx = 0;
+            let temp = BigInt(Math.floor(num));
+
+            if (temp === 0n) return "0";
+
+            while (temp > 0n) {
+                let part = Number(temp % 10000n);
+                if (part > 0) {
+                    result = part.toString() + UNITS[unitIdx] + result;
+                }
+                temp = temp / 10000n;
+                unitIdx++;
+            }
+            return result || "0";
+        }
+
+        /* ==================== 4. ゲーム初期化＆開始 ==================== */
+        function startGame(selectedLevel) {
+            initAudio();
+            playSound('click');
+
+            level = selectedLevel;
+            currentStage = 1;
+            choiceHistory = [];
+            isBossBattle = false;
+            isFinalBoss = false;
+            isAnimating = false;
+
+            level2MultiplyCount = 0;
+            lastQuestionWasBothMinus = false;
+
+            if (level === 1) { currentPower = 10; maxTime = 15; }
+            else if (level === 2) { currentPower = 10; maxTime = 12; }
+            else if (level === 3) { currentPower = 100; maxTime = 9; }
+            else if (level === 4) { currentPower = 1000; maxTime = 6; }
+            else if (level === 5) { currentPower = 10000; maxTime = 4; }
+            
+            optimalPower = currentPower;
+
+            document.getElementById('screen-start').classList.add('hidden');
+            document.getElementById('screen-result').classList.add('hidden');
+            document.getElementById('screen-game').classList.remove('hidden');
+            document.getElementById('screen-game').classList.add('flex');
+
+            applyLanguageSettings();
+            resetPlayerPosition();
+            setupStage();
+        }
+
+        function applyLanguageSettings() {
+            const isHiragana = (level === 1 || level === 2);
+            document.getElementById('label-stage').textContent = isHiragana ? 'すてーじ' : 'ステージ';
+            document.getElementById('label-power').textContent = isHiragana ? 'こうげきりょく' : '攻撃力';
+            document.getElementById('label-final-power').textContent = isHiragana ? 'さいごの こうげきりょく' : '最終攻撃力';
+            document.getElementById('label-kanji-power').textContent = isHiragana ? 'かんじ まじり ひょうき' : '漢字まじり表記';
+            document.getElementById('btn-return-text').textContent = isHiragana ? 'タイトルに もどる' : 'タイトルに戻る';
+            document.getElementById('btn-history-text').textContent = isHiragana ? 'たたかいの きろく' : '戦いの記録';
+            document.getElementById('modal-title').textContent = isHiragana ? '📜 たたかいの きろく' : '📜 戦いの記録';
+        }
+
+        /* プレイヤーキャラクターの基本位置復元 */
+        function resetPlayerPosition() {
+            const wrapper = document.getElementById('player-wrapper');
+            wrapper.style.transform = 'translate(0px, 0px)';
+            wrapper.style.opacity = '1';
+            
+            // 顔アイコンを通常状態（にっこり＆剣）へリセット
+            document.getElementById('player-avatar').textContent = '🙂⚔️';
+
+            // ノード表示の復元
+            document.getElementById('node-left').classList.remove('fade-out-fast');
+            document.getElementById('node-right').classList.remove('fade-out-fast');
+            document.getElementById('slash-effect').classList.add('hidden');
+            document.getElementById('counter-effect').classList.add('hidden');
+        }
+
+        /* ==================== 5. 問題生成ロジック ==================== */
+        function generateStageChoices() {
+            // --- レベル1 ---
+            if (level === 1) {
+                let op1 = Math.random() < 0.5 ? '+' : '-';
+                let op2 = Math.random() < 0.5 ? '+' : '-';
+
+                // 2問連続で両方マイナスを防ぐ
+                if (lastQuestionWasBothMinus && op1 === '-' && op2 === '-') {
+                    if (Math.random() < 0.5) op1 = '+';
+                    else op2 = '+';
+                }
+
+                let val1 = Math.floor(Math.random() * 9) + 1;
+                let val2 = Math.floor(Math.random() * 9) + 1;
+
+                if (op1 === '-' && val1 > currentPower) val1 = Math.max(1, currentPower);
+                if (op2 === '-' && val2 > currentPower) val2 = Math.max(1, currentPower);
+
+                lastQuestionWasBothMinus = (op1 === '-' && op2 === '-');
+
+                return [
+                    { op: op1, val: val1, text: `${op1} ${val1}` },
+                    { op: op2, val: val2, text: `${op2} ${val2}` }
+                ];
+            }
+
+            // --- レベル5（上級者向け）---
+            if (level === 5) {
+                const pStr = Math.floor(currentPower).toString();
+                const digits = pStr.length;
+
+                const createOptionL5 = () => {
+                    const r = Math.random();
+                    let op, val;
+                    if (r < 0.35) {
+                        op = '+';
+                        const min = Math.pow(10, Math.max(1, digits - 1));
+                        const max = Math.pow(10, digits) * 2;
+                        val = Math.floor(Math.random() * (max - min + 1)) + min;
+                    } else if (r < 0.65) {
+                        op = '-';
+                        const max = Math.max(1, Math.floor(currentPower * 0.8));
+                        val = Math.floor(Math.random() * max) + 1;
+                    } else {
+                        op = '×';
+                        // レベル5専用: 0.1, 0.5, 2, 3, 5, 10
+                        const mults = [0.1, 0.5, 2, 3, 5, 10];
+                        val = mults[Math.floor(Math.random() * mults.length)];
+                    }
+                    return { op: op, val: val, text: `${op} ${val}` };
+                };
+
+                let optA = createOptionL5();
+                let optB = createOptionL5();
+
+                // 2問連続で両方マイナスを防ぐ
+                if (lastQuestionWasBothMinus && optA.op === '-' && optB.op === '-') {
+                    optA = { op: '+', val: Math.floor(currentPower * 0.5) + 10, text: `+ ${Math.floor(currentPower * 0.5) + 10}` };
+                }
+
+                if (optA.op === optB.op && optA.val === optB.val) {
+                    if (typeof optB.val === 'number') optB.val += 1;
+                    optB.text = `${optB.op} ${optB.val}`;
+                }
+
+                lastQuestionWasBothMinus = (optA.op === '-' && optB.op === '-');
+
+                return [optA, optB];
+            }
+
+            // --- レベル2, 3, 4 ---
+            const pStr = Math.floor(currentPower).toString();
+            const digits = pStr.length;
+
+            let plusDigits = 1;
+            let minusDigits = 1;
+
+            if (digits === 1) { plusDigits = 1; minusDigits = 1; }
+            else if (digits === 2) { plusDigits = Math.random() < 0.5 ? 2 : 3; minusDigits = 1; }
+            else if (digits === 3) { plusDigits = Math.random() < 0.5 ? 3 : 4; minusDigits = 2; }
+            else if (digits === 4) { plusDigits = Math.random() < 0.5 ? 4 : 5; minusDigits = 3; }
+            else { plusDigits = digits; minusDigits = Math.max(1, digits - 1); }
+
+            // 通常問題の何問目か（1, 2, 4, 5, 7, 8問目 = 計6回）
+            let normalQuestionIndex = currentStage;
+            if (currentStage > 3) normalQuestionIndex--;
+            if (currentStage > 6) normalQuestionIndex--;
+
+            // レベル2で掛け算が足りない場合、強制的に掛け算を出現させるかチェック
+            let forceMultiplyLevel2 = false;
+            if (level === 2) {
+                const remainingQuestions = 6 - normalQuestionIndex + 1;
+                const needed = 2 - level2MultiplyCount;
+                if (needed > 0 && remainingQuestions <= needed) {
+                    forceMultiplyLevel2 = true;
+                }
+            }
+
+            const randOp = () => {
+                if (level === 2) {
+                    if (forceMultiplyLevel2) return '×';
+                    const r = Math.random();
+                    return r < 0.45 ? '+' : (r < 0.8 ? '-' : '×');
+                }
+                const r = Math.random();
+                return r < 0.4 ? '+' : (r < 0.7 ? '-' : '×');
+            };
+
+            const createOption = () => {
+                const op = randOp();
+                let val = 1;
+                if (op === '+') {
+                    const min = Math.pow(10, plusDigits - 1);
+                    const max = Math.pow(10, plusDigits) - 1;
+                    val = Math.floor(Math.random() * (max - min + 1)) + min;
+                } else if (op === '-') {
+                    const min = Math.pow(10, Math.max(0, minusDigits - 1));
+                    const max = Math.min(Math.pow(10, minusDigits) - 1, Math.floor(currentPower));
+                    val = (max <= 1) ? 1 : Math.floor(Math.random() * (max - min + 1)) + min;
+                } else if (op === '×') {
+                    val = Math.floor(Math.random() * 8) + 2; // 2〜9
+                }
+                return { op: op, val: val, text: `${op} ${val}` };
+            };
+
+            let optA = createOption();
+            let optB = createOption();
+
+            // 2問連続で「両方ー」を防止
+            if (lastQuestionWasBothMinus && optA.op === '-' && optB.op === '-') {
+                optA.op = '+';
+                optA.text = `+ ${optA.val}`;
+            }
+
+            if (optA.op === optB.op && optA.val === optB.val) {
+                optB.val += 1;
+                optB.text = `${optB.op} ${optB.val}`;
+            }
+
+            // カウントの更新
+            if (level === 2) {
+                if (optA.op === '×' || optB.op === '×') {
+                    level2MultiplyCount++;
+                }
+            }
+
+            lastQuestionWasBothMinus = (optA.op === '-' && optB.op === '-');
+
+            return [optA, optB];
+        }
+
+        /* ==================== 6. ステージセットアップ ==================== */
+        function setupStage() {
+            clearInterval(timerInterval);
+            isAnimating = false;
+            resetPlayerPosition();
+
+            const isHiragana = (level === 1 || level === 2);
+            document.getElementById('current-stage').textContent = currentStage;
+            document.getElementById('display-power').textContent = currentPower.toLocaleString();
+
+            if (isBossBattle) {
+                setupBossStage();
+                return;
+            }
+
+            if (isFinalBoss) {
+                setupFinalBossStage();
+                return;
+            }
+
+            // 通常ステージ
+            document.getElementById('header-enemy-title').textContent = isHiragana 
+                ? `すてーじ ${currentStage} の てき` 
+                : `ステージ ${currentStage} の 敵`;
+
+            const enemyIcons = ['👾', '🛸', '🤖', '👻', '🐉', '👹', '👺'];
+            document.getElementById('enemy-left-avatar').textContent = enemyIcons[(currentStage * 2) % enemyIcons.length];
+            document.getElementById('enemy-right-avatar').textContent = enemyIcons[(currentStage * 2 + 1) % enemyIcons.length];
+
+            const choices = generateStageChoices();
+            currentChoices.left = choices[0];
+            currentChoices.right = choices[1];
+
+            document.getElementById('btn-left-text').textContent = choices[0].text;
+            document.getElementById('btn-right-text').textContent = choices[1].text;
+
+            startTimer();
+        }
+
+        function setupBossStage() {
+            const isHiragana = (level === 1 || level === 2);
+            document.getElementById('header-enemy-title').textContent = isHiragana ? 'ちゅうぼす とうじょう！' : '中ボス 登場！';
+
+            document.getElementById('enemy-left-avatar').textContent = '👹';
+            document.getElementById('enemy-right-avatar').textContent = '👺';
+
+            const bossA_HP = Math.max(1, Math.ceil(optimalPower * 0.92));
+            const bossB_HP = Math.max(1, Math.ceil(optimalPower * 0.65));
+
+            currentBosses.bossA = { name: isHiragana ? 'ぼすA' : 'ボスA', hp: bossA_HP };
+            currentBosses.bossB = { name: isHiragana ? 'ぼすB' : 'ボスB', hp: bossB_HP };
+
+            document.getElementById('btn-left-text').textContent = `${currentBosses.bossA.name}\nHP ${bossA_HP.toLocaleString()}`;
+            document.getElementById('btn-right-text').textContent = `${currentBosses.bossB.name}\nHP ${bossB_HP.toLocaleString()}`;
+
+            startTimer();
+        }
+
+        function setupFinalBossStage() {
+            const isHiragana = (level === 1 || level === 2);
+            document.getElementById('header-enemy-title').textContent = isHiragana ? 'らすぼす とうじょう！' : 'ラスボス 登場！';
+
+            const finalBossHP = Math.max(1, Math.ceil(optimalPower * 0.95));
+            currentBosses.finalBoss = { name: isHiragana ? 'らすぼす' : 'ラスボス', hp: finalBossHP };
+
+            document.getElementById('enemy-left-avatar').textContent = '🐲';
+            document.getElementById('enemy-right-avatar').textContent = '💨';
+
+            document.getElementById('btn-left-text').textContent = isHiragana ? `たたかう\n(HP ${finalBossHP.toLocaleString()})` : `戦う\n(HP ${finalBossHP.toLocaleString()})`;
+            document.getElementById('btn-right-text').textContent = isHiragana ? 'にげる' : '逃げる';
+
+            startTimer();
+        }
+
+        /* ==================== 7. タイマー機能 ==================== */
+        function startTimer() {
+            timeLeft = maxTime;
+            updateTimerBar();
+
+            timerInterval = setInterval(() => {
+                timeLeft -= 0.1;
+                if (timeLeft <= 0) {
+                    timeLeft = 0;
+                    clearInterval(timerInterval);
+                    handleChoice('left', true); // 時間切れ時は左を自動選択
+                }
+                updateTimerBar();
+            }, 100);
+        }
+
+        function updateTimerBar() {
+            const pct = Math.max(0, (timeLeft / maxTime) * 100);
+            const bar = document.getElementById('timer-bar');
+            bar.style.width = `${pct}%`;
+
+            if (pct > 50) bar.className = "h-full bg-emerald-500 rounded-full timer-bar";
+            else if (pct > 25) bar.className = "h-full bg-amber-500 rounded-full timer-bar";
+            else bar.className = "h-full bg-rose-500 rounded-full timer-bar";
+        }
+
+        function calculateNewPower(basePower, option) {
+            let res = basePower;
+            if (option.op === '+') res += option.val;
+            else if (option.op === '-') res -= option.val;
+            else if (option.op === '×') res *= option.val;
+            
+            // 小数点以下は四捨五入（×0.1, ×0.5等への対応）
+            return Math.max(0, Math.round(res));
+        }
+
+        /* ==================== 8. 選択・アニメーション処理 ==================== */
+        function handleChoice(side, isTimeOut = false) {
+            if (isAnimating) return;
+            isAnimating = true;
+            clearInterval(timerInterval);
+
+            const isHiragana = (level === 1 || level === 2);
+            const unselectedSide = (side === 'left') ? 'right' : 'left';
+
+            // ① 選ばれなかった側の敵とボックスが消える
+            document.getElementById(`node-${unselectedSide}`).classList.add('fade-out-fast');
+
+            // ② プレイヤーキャラクターが選んだ敵の真下へ移動
+            const playerWrapper = document.getElementById('player-wrapper');
+            const targetNode = document.getElementById(`node-${side}`);
+            
+            const playerRect = playerWrapper.getBoundingClientRect();
+            const targetRect = targetNode.getBoundingClientRect();
+            
+            // X軸の移動距離計算
+            const deltaX = (targetRect.left + targetRect.width / 2) - (playerRect.left + playerRect.width / 2);
+            playerWrapper.style.transform = `translateX(${deltaX}px)`;
+
+            // 移動待機後、攻撃演出
+            setTimeout(() => {
+                playSound('attack');
+
+                // 斬撃エフェクト表示
+                const slash = document.getElementById('slash-effect');
+                const selectedAvatar = document.getElementById(`enemy-${side}-avatar`);
+                const avatarRect = selectedAvatar.getBoundingClientRect();
+                const containerRect = document.getElementById('screen-game').getBoundingClientRect();
+
+                slash.style.left = `${avatarRect.left - containerRect.left + 10}px`;
+                slash.style.top = `${avatarRect.top - containerRect.top - 10}px`;
+                slash.classList.remove('hidden');
+                slash.classList.add('animate-slash');
+
+                // 敵撃破＆攻撃力数値更新
+                setTimeout(() => {
+                    selectedAvatar.textContent = '💥';
+
+                    // 計算処理と数値更新
+                    if (isFinalBoss) {
+                        if (side === 'left') {
+                            const bossHP = currentBosses.finalBoss.hp;
+                            if (currentPower >= bossHP) {
+                                playSound('win');
+                                currentPower += bossHP;
+                                addHistoryRecord('ラスボス戦', '戦う', '逃げる', currentPower - bossHP, currentPower);
+                                document.getElementById('display-power').textContent = currentPower.toLocaleString();
+                                transitionAfterDelay(() => endGame('win_final'));
+                            } else {
+                                // 💥 ラスボス戦で攻撃力がボスのHPより低く敗北した場合 💥
+                                playSound('lose');
+                                selectedAvatar.textContent = '🐲'; // ラスボスは消えない！
+
+                                // ラスボスからの反撃エフェクト表示
+                                const counter = document.getElementById('counter-effect');
+                                const playerRect = playerWrapper.getBoundingClientRect();
+                                const containerRect = document.getElementById('screen-game').getBoundingClientRect();
+
+                                counter.style.left = `${playerRect.left - containerRect.left + 20}px`;
+                                counter.style.top = `${playerRect.top - containerRect.top - 10}px`;
+                                counter.classList.remove('hidden');
+                                counter.classList.add('animate-counter');
+
+                                // 主人公が困り顔（😭）になって消える
+                                document.getElementById('player-avatar').textContent = '😭⚔️';
+                                setTimeout(() => {
+                                    playerWrapper.classList.add('fade-out-fast');
+                                }, 300);
+
+                                addHistoryRecord('ラスボス戦', '戦う', '逃げる', currentPower, currentPower);
+                                transitionAfterDelay(() => endGame('lose_final'));
+                            }
+                        } else {
+                            playSound('click');
+                            addHistoryRecord('ラスボス戦', '逃げる', '戦う', currentPower, currentPower);
+                            transitionAfterDelay(() => endGame('run_final'));
+                        }
+                        return;
+                    }
+
+                    if (isBossBattle) {
+                        const chosenBoss = (side === 'left') ? currentBosses.bossA : currentBosses.bossB;
+                        const unchosenBoss = (side === 'left') ? currentBosses.bossB : currentBosses.bossA;
+                        const isWin = (currentPower >= chosenBoss.hp);
+
+                        const prevP = currentPower;
+                        if (isWin) {
+                            playSound('win');
+                            currentPower += chosenBoss.hp;
+                            optimalPower += currentBosses.bossA.hp;
+                            document.getElementById('display-power').textContent = currentPower.toLocaleString();
+                        } else {
+                            // 💥 中ボス戦で攻撃力がボスのHPより低く負けた場合 💥
+                            playSound('lose');
+                            // ボスは消えずに元に戻る
+                            selectedAvatar.textContent = (side === 'left') ? '👹' : '👺';
+                            // 主人公の顔を困り顔にする
+                            document.getElementById('player-avatar').textContent = '😭⚔️';
+                        }
+
+                        addHistoryRecord(`ボス戦(St.${currentStage})`, `${chosenBoss.name}(HP${chosenBoss.hp})`, `${unchosenBoss.name}(HP${unchosenBoss.hp})`, prevP, currentPower);
+
+                        isBossBattle = false;
+                        currentStage++;
+                        transitionAfterDelay(() => setupStage());
+                        return;
+                    }
+
+                    // 通常ステージ処理
+                    const chosenOption = (side === 'left') ? currentChoices.left : currentChoices.right;
+                    const unchosenOption = (side === 'left') ? currentChoices.right : currentChoices.left;
+                    
+                    const prevP = currentPower;
+                    currentPower = calculateNewPower(currentPower, chosenOption);
+
+                    // 理論値（最適解）の独立更新
+                    const optLeft = calculateNewPower(optimalPower, currentChoices.left);
+                    const optRight = calculateNewPower(optimalPower, currentChoices.right);
+                    optimalPower = Math.max(optLeft, optRight);
+
+                    document.getElementById('display-power').textContent = currentPower.toLocaleString();
+                    addHistoryRecord(`ステージ ${currentStage}`, chosenOption.text, unchosenOption.text, prevP, currentPower);
+
+                    if (currentStage === 3 || currentStage === 6 || currentStage === 9) {
+                        isBossBattle = true;
+                    } else if (currentStage === 10) {
+                        isFinalBoss = true;
+                    } else {
+                        currentStage++;
+                    }
+
+                    transitionAfterDelay(() => setupStage());
+
+                }, 200);
+
+            }, 300);
+        }
+
+        /* ゲーム開始時に選んだレベルの制限時間の 1/10 の時間で次の敵画面へ移動 */
+        function transitionAfterDelay(callback) {
+            const delayMs = (maxTime / 10) * 1000;
+            setTimeout(callback, delayMs);
+        }
+
+        /* ==================== 9. 戦いの記録履歴データ保持 ==================== */
+        function addHistoryRecord(stageName, selectedText, unselectedText, beforeP, afterP) {
+            choiceHistory.push({
+                stage: stageName,
+                selected: selectedText,
+                unselected: unselectedText,
+                before: beforeP,
+                after: afterP
+            });
+        }
+
+        function openHistoryModal() {
+            playSound('click');
+            const isHiragana = (level === 1 || level === 2);
+            const container = document.getElementById('modal-history-content');
+            container.innerHTML = '';
+
+            if (choiceHistory.length === 0) {
+                container.innerHTML = `<p class="text-slate-400 italic text-center py-4">${isHiragana ? 'きろくが ありません' : '記録がありません'}</p>`;
+            } else {
+                choiceHistory.forEach((item) => {
+                    const row = document.createElement('div');
+                    row.className = "bg-slate-50 border border-slate-200 p-3 rounded-2xl flex flex-col justify-between gap-1";
+                    
+                    row.innerHTML = `
+                        <div class="flex justify-between items-center text-xs text-indigo-800 font-extrabold">
+                            <span>📌 ${item.stage}</span>
+                            <span>${item.before.toLocaleString()} ➔ ${item.after.toLocaleString()}</span>
+                        </div>
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-emerald-700 font-black">選んだ: ${item.selected}</span>
+                            <span class="text-slate-400 text-xs">選ばなかった: ${item.unselected}</span>
+                        </div>
+                    `;
+                    container.appendChild(row);
+                });
+            }
+
+            const modal = document.getElementById('modal-history');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeHistoryModal() {
+            playSound('click');
+            const modal = document.getElementById('modal-history');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        /* ==================== 10. 結果画面＆タイトルリセット ==================== */
+        function endGame(reason) {
+            const isHiragana = (level === 1 || level === 2);
+
+            document.getElementById('screen-game').classList.add('hidden');
+            document.getElementById('screen-result').classList.remove('hidden');
+            document.getElementById('screen-result').classList.add('flex');
+
+            const badge = document.getElementById('result-badge');
+            const title = document.getElementById('result-title');
+            const detail = document.getElementById('result-detail');
+
+            if (reason === 'win_final') {
+                badge.className = "inline-block px-4 py-1 rounded-full text-white font-extrabold text-sm md:text-base shadow bg-emerald-500 animate-bounce";
+                badge.textContent = "GAME CLEAR!";
+                title.textContent = isHiragana ? "らすぼす げきは！" : "ラスボス 撃破！";
+                detail.textContent = isHiragana ? "みごと らすぼすを たおした！ おめでとう！" : "見事ラスボスを倒した！おめでとう！";
+            } else if (reason === 'lose_final') {
+                badge.className = "inline-block px-4 py-1 rounded-full text-white font-extrabold text-sm md:text-base shadow bg-rose-500";
+                badge.textContent = "GAME OVER";
+                title.textContent = isHiragana ? "はいぼく…" : "敗北…";
+                detail.textContent = isHiragana ? "こうげきりょくが たりなかった… つぎは がんばろう！" : "攻撃力が足りなかった… 次は頑張ろう！";
+            } else if (reason === 'run_final') {
+                badge.className = "inline-block px-4 py-1 rounded-full text-white font-extrabold text-sm md:text-base shadow bg-amber-500";
+                badge.textContent = "ESCAPED";
+                title.textContent = isHiragana ? "にげだした！" : "逃げ出した！";
+                detail.textContent = isHiragana ? "らすぼすから にげきった！" : "ラスボスから逃げ切った！";
+            }
+
+            document.getElementById('final-power-number').textContent = currentPower.toLocaleString();
+            document.getElementById('final-power-kanji').textContent = formatKanjiPower(currentPower);
+        }
+
+        function returnToTitle() {
+            playSound('click');
+            clearInterval(timerInterval);
+
+            level = 1;
+            currentStage = 1;
+            currentPower = 10;
+            optimalPower = 10;
+            choiceHistory = [];
+            isBossBattle = false;
+            isFinalBoss = false;
+            isAnimating = false;
+
+            document.getElementById('screen-result').classList.add('hidden');
+            document.getElementById('screen-game').classList.add('hidden');
+            document.getElementById('screen-start').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
